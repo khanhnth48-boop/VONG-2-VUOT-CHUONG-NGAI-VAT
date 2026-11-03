@@ -2,6 +2,7 @@ import express from 'express';
 import {createServer} from 'node:http';
 import {Server} from 'socket.io';
 const app=express(),http=createServer(app),io=new Server(http);app.use(express.static('public'));
+app.get('/', (req, res) => res.sendFile('index.html', { root: process.cwd() }));
 const rooms=new Map();const makeCode=()=>Math.random().toString(36).slice(2,8).toUpperCase();
 const clean=s=>String(s??'').trim().slice(0,160);
 function view(r){return {code:r.code,question:r.question,number:r.number,open:r.open,seconds:r.seconds,teams:Object.fromEntries(Object.entries(r.teams).map(([k,v])=>[k,{name:v.name,connected:!!v.sid,answer:v.answer,submitted:v.submitted,score:v.score}])),revealed:r.revealed};}
