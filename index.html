@@ -17,13 +17,113 @@ const socket=io({
   timeout:20000
 });
 let selected=1,myTeam=null,remaining=0,timer=null;
-const $=id=>document.getElementById(id);function show(id){['home','joinPage','hostPage','playerPage'].forEach(x=>$(x).classList.toggle('hidden',x!==id))}function notify(msg){alert(msg)}
+const $=id=>document.getElementById(id);function show(id){['home','joinPage','hostPage','playerPage'].forEach(x=>$(x).classList.toggle('hidden',x!==id))}function notify(msg){alert(msg)}let deadline=null;
+let currentQuestion=0;
+let questionOpen=false;
+let alreadySubmitted=false;
+
+function formatTime(ms){
+  const total=Math.max(0,Math.ceil(ms/1000));
+  const minutes=Math.floor(total/60);
+  const seconds=total%60;
+  return String(minutes).padStart(2,'0')+':'+String(seconds).padStart(2,'0');
+}
+
+function updateClock(){
+  const left=questionOpen && deadline
+    ? Math.max(0,deadline-Date.now())
+    : 0;
+
+  const display=questionOpen
+    ? formatTime(left)
+    : '00:00';
+
+  ['hostTimer','playerTimer'].forEach(id=>{
+    const el=$(id);
+    if(!el)return;
+    el.textContent=display;
+    el.style.color=left<=5000?'#ff7891':'#ffd45d';
+  });
+
+  if(questionOpen && left===0){
+    $('answerText').disabled=true;
+    $('sendBtn').disabled=true;
+    $('playerStatus').textContent='🔒 Đã hết giờ';
+  }
+}
+
+setInterval(updateClock,200);
 function createRoom(){socket.emit('create',{},r=>{if(!r.ok)return notify('Không tạo được phòng');$('roomCode').textContent=r.code;show('hostPage')})}
 function joinRoom(){socket.emit('join',{code:$('joinCode').value,team:$('teamSelect').value},r=>{if(!r.ok)return notify(r.error);myTeam=r.team;$('myTeam').textContent='🏅 Đội '+myTeam;show('playerPage')})}
 function renderPuzzle(){let h='';for(let i=1;i<=8;i++)h+=`<button class="${i===selected?'gold':''}" onclick="selected=${i};renderPuzzle()">HÀNG ${i}</button>`;$('puzzle').innerHTML=h}
 function openQuestion(){const q=$('questionText').value.trim();if(!q)return notify('Vui lòng nhập câu hỏi');socket.emit('openQuestion',{number:selected,question:q,seconds:$('seconds').value},r=>{if(!r.ok)notify('Không thể mở câu hỏi')})}
-function reveal(){socket.emit('reveal',{},()=>{})}function submitAnswer(){const answer=$('answerText').value.trim();if(!answer)return notify('Hãy nhập đáp án');socket.emit('submit',{answer},r=>{if(!r.ok)notify(r.error)})}
-socket.on('state',s=>{$('count').textContent=Object.values(s.teams).filter(t=>t.connected).length+'/6 đội';$('hostStatus').textContent=s.number?`Hàng ${s.number} • ${s.open?'ĐANG NHẬN ĐÁP ÁN':s.revealed?'ĐÃ KHÓA':'ĐANG CHỜ'}`:'Chưa mở câu hỏi';let html='';for(let i=1;i<=6;i++){const t=s.teams[i];html+=`<div class="team"><strong>🏅 Đội ${i}</strong> <span class="status">${t?.connected?'🟢 Online':'⚪ Chưa vào'}</span><div class="muted">${t?.submitted?'Đã gửi đáp án':'Đang chờ đáp án'}</div><div class="answer"></div><div class="muted">Điểm: ${t?.score||0}</div><button onclick="score(${i},20)">+20</button></div>`} $('teamGrid').innerHTML=html;Object.entries(s.teams).forEach(([i,t])=>{const el=$('teamGrid').children[Number(i)-1]?.querySelector('.answer');if(el)el.textContent=t.submitted?t.answer:'—'})});function score(team,delta){socket.emit('score',{team,delta})}
-socket.on('question',q=>{$('qNumber').textContent=q.number?'HÀNG NGANG SỐ '+q.number:'';$('playerQuestion').textContent=q.question||'Vui lòng chờ câu hỏi.';const active=q.open;$('playerStatus').textContent=active?'🟢 Đang nhận câu trả lời':q.revealed?'🔒 Đã khóa câu trả lời':'Đang chờ giáo viên';if(active){$('answerText').value='';$('sentNote').textContent='Chỉ giáo viên nhìn thấy câu trả lời của các đội.'}$('answerText').disabled=!active;$('sendBtn').disabled=!active});
+function reveal(){socket.emit('reveal',{},()=>{})}
+function submitAnswer(){
+  const answer=$('answerText').value.trim();
+
+  if(!answer)return notify('Hãy nhập đáp án');
+
+  if(!socket.connected){
+    $('sentNote').textContent='⚠️ Mất kết nối. Chưa gửi được đáp án.';
+    return;
+  }
+
+  $('sendBtn').disabled=true;
+  $('sentNote').textContent='⏳ Đang gửi đáp án...';
+
+  socket.timeout(5000).emit('submit',{answer},(err,r)=>{
+    if(err){
+      $('sentNote').textContent='⚠️ Chưa xác nhận được. Kiểm tra kết nối.';
+      $('sendBtn').disabled=!questionOpen||Date.now()>=deadline;
+      return;
+    }
+
+    if(!r?.ok){
+      $('sentNote').textContent='❌ '+(r?.error||'Không gửi được đáp án');
+      $('sendBtn').disabled=!questionOpen||Date.now()>=deadline;
+      return;
+    }
+
+    alreadySubmitted=true;
+    $('answerText').disabled=true;
+    $('sendBtn').disabled=true;
+    $('sentNote').textContent='✅ Máy chủ đã nhận đáp án thành công!';
+  });
+}
+
+socket.on('state',s=>{deadline=s.deadline||null;
+questionOpen=!!s.open;
+updateClock();$('count').textContent=Object.values(s.teams).filter(t=>t.connected).length+'/6 đội';$('hostStatus').textContent=s.number?`${s.open?'ĐANG NHẬN ĐÁP ÁN':s.revealed?'ĐÃ KHÓA':'ĐANG CHỜ'}`:'Chưa mở câu hỏi';let html='';for(let i=1;i<=6;i++){const t=s.teams[i];html+=`<div class="team"><strong>🏅 Đội ${i}</strong> <span class="status">${t?.connected?'🟢 Online':'⚪ Chưa vào'}</span><div class="muted">${t?.submitted?'Đã gửi đáp án':'Đang chờ đáp án'}</div><div class="answer"></div><div class="muted">Điểm: ${t?.score||0}</div><button onclick="score(${i},20)">+20</button></div>`} $('teamGrid').innerHTML=html;Object.entries(s.teams).forEach(([i,t])=>{const el=$('teamGrid').children[Number(i)-1]?.querySelector('.answer');if(el)el.textContent=t.submitted?t.answer:'—'})});function score(team,delta){socket.emit('score',{team,delta})}
+
+socket.on('question',q=>{
+  const newQuestion=q.number!==currentQuestion;
+
+  if(newQuestion){
+    currentQuestion=q.number;
+    alreadySubmitted=false;
+    $('answerText').value='';
+    $('sentNote').textContent='Chỉ giáo viên nhìn thấy câu trả lời của các đội.';
+  }
+
+  deadline=q.deadline||null;
+  questionOpen=!!q.open;
+
+  $('qNumber').textContent='';
+  $('playerQuestion').textContent=q.question||'Vui lòng chờ câu hỏi.';
+
+  const active=q.open && deadline>Date.now();
+
+  $('playerStatus').textContent=active
+    ? '🟢 Đang nhận câu trả lời'
+    : q.revealed
+      ? '🔒 Đã khóa câu trả lời'
+      : '⏱️ Đã hết giờ / Đang chờ giáo viên';
+
+  $('answerText').disabled=!active||alreadySubmitted;
+  $('sendBtn').disabled=!active||alreadySubmitted;
+
+  updateClock();
+});
+
 socket.on('ended',()=>{notify('Giáo viên đã kết thúc phiên chơi.');location.reload()});socket.on('disconnect',()=>{$('playerStatus').textContent='⚠️ Mất kết nối – vui lòng tải lại trang'});
 </script></body></html>
