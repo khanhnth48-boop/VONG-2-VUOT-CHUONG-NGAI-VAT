@@ -6,7 +6,15 @@
 <section id="hostPage" class="hidden"><h2>🎛️ Bảng điều khiển giáo viên</h2><div class="row"><div><span class="muted">Mã phòng để học sinh tham gia:</span><div class="code" id="roomCode"></div></div><div><span class="muted">Thiết bị kết nối:</span><div class="big" id="count">0/6 đội</div></div></div><div class="card"><h2>🧩 Chọn hàng ngang</h2><div class="puzzle" id="puzzle"></div><label>Câu hỏi hiển thị cho học sinh</label><textarea id="questionText" placeholder="Nhập câu hỏi hàng ngang..."></textarea><label>Thời gian trả lời (giây)</label><input id="seconds" type="number" value="30" min="5" max="300"><p><button onclick="openQuestion()">📢 MỞ CÂU HỎI</button><button class="gold" onclick="reveal()">🔓 KHÓA NHẬN ĐÁP ÁN / CÔNG BỐ</button></p><div class="muted" id="hostStatus">Chưa mở câu hỏi</div></div><h2>📡 Đáp án trực tiếp của 6 đội</h2><div class="grid" id="teamGrid"></div></section>
 <section id="playerPage" class="hidden"><h2 id="myTeam">Đội</h2><div class="pill" id="playerStatus">Đang chờ giáo viên mở câu hỏi...</div><div class="card"><div class="muted" id="qNumber"></div><div id="playerQuestion">Vui lòng chờ câu hỏi.</div><p><textarea id="answerText" placeholder="Nhập đáp án của đội..." disabled></textarea></p><button id="sendBtn" onclick="submitAnswer()" disabled>📨 GỬI ĐÁP ÁN</button><p class="muted" id="sentNote">Chỉ giáo viên nhìn thấy câu trả lời của các đội.</p></div></section>
 <footer>Phiên chơi trực tiếp • Mỗi đội sử dụng một thiết bị</footer></main><script src="/socket.io/socket.io.js"></script><script>
-const socket=io();let selected=1,myTeam=null,remaining=0,timer=null;const $=id=>document.getElementById(id);function show(id){['home','joinPage','hostPage','playerPage'].forEach(x=>$(x).classList.toggle('hidden',x!==id))}function notify(msg){alert(msg)}
+const socket=io({
+  reconnection:true,
+  reconnectionAttempts:Infinity,
+  reconnectionDelay:1000,
+  reconnectionDelayMax:5000,
+  timeout:20000
+});
+let selected=1,myTeam=null,remaining=0,timer=null;
+const $=id=>document.getElementById(id);function show(id){['home','joinPage','hostPage','playerPage'].forEach(x=>$(x).classList.toggle('hidden',x!==id))}function notify(msg){alert(msg)}
 function createRoom(){socket.emit('create',{},r=>{if(!r.ok)return notify('Không tạo được phòng');$('roomCode').textContent=r.code;show('hostPage');renderPuzzle()})}
 function joinRoom(){socket.emit('join',{code:$('joinCode').value,team:$('teamSelect').value},r=>{if(!r.ok)return notify(r.error);myTeam=r.team;$('myTeam').textContent='🏅 Đội '+myTeam;show('playerPage')})}
 function renderPuzzle(){let h='';for(let i=1;i<=8;i++)h+=`<button class="${i===selected?'gold':''}" onclick="selected=${i};renderPuzzle()">HÀNG ${i}</button>`;$('puzzle').innerHTML=h}
