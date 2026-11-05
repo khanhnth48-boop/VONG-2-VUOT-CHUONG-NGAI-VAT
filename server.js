@@ -28,10 +28,20 @@ function snapshot(r) {
 }
 function publish(r) {
   io.to(r.code + ':host').emit('state', snapshot(r));
-  io.to(r.code + ':players').emit('question', {
-    number: r.number, question: r.question, open: r.open,
-    seconds: r.seconds, deadline: r.deadline, revealed: r.revealed
-  });
+
+  for (const [id, t] of Object.entries(r.teams)) {
+    if (!t.sid) continue;
+
+    io.to(t.sid).emit('question', {
+      number: r.number,
+      question: r.question,
+      open: r.open,
+      seconds: r.seconds,
+      deadline: r.deadline,
+      revealed: r.revealed,
+      submitted: t.submitted
+    });
+  }
 }
 function roomForHost(s) {
   const r = rooms.get(s.data.hostCode);
