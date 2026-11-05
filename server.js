@@ -581,37 +581,53 @@ io.on('connection', s => {
     }).catch(err => respondError(cb, err));
   });
 
-  s.on('score', ({ team, delta } = {}, cb) => {
-    const r = roomForHost(s);
 
-    if (!r) {
+s.on('score', ({ team, delta } = {}, cb) => {
+  const r = roomForHost(s);
+
+  if (!r) {
+    return cb?.({ ok: false });
+  }
+
+  enqueue(r, async () => {
+    if (roomForHost(s) !== r) {
       return cb?.({ ok: false });
     }
 
-    enqueue(r, async () => {
-      if (roomForHost(s) !== r) {
-        return cb?.({ ok: false });
-      }
+    const t = r.teams[String(team)];
+    const change = Number(delta);
 
-      const t = r.teams[String(team)];
+    // Chỉ cho phép cộng 20 hoặc hoàn tác trừ 20.
+    if (!t || ![20, -20].includes(change)) {
+      return cb?.({
+        ok: false,
+        error: 'Thao tác điểm không hợp lệ.'
+      });
+    }
 
-      if (!t || Number(delta) !== 20) {
-        return cb?.({ ok: false });
-      }
+    // Không cho phép điểm âm.
+    if (change === -20 && t.score < 20) {
+      return cb?.({
+        ok: false,
+        error: 'Không đủ điểm để hoàn tác.'
+      });
+    }
 
-      t.score += 20;
+    const previousScore = t.score;
+    t.score += change;
 
-      try {
-        await save(r);
-      } catch (err) {
-        t.score -= 20;
-        throw err;
-      }
+    try {
+      await save(r);
+    } catch (err) {
+      t.score = previousScore;
+      throw err;
+    }
 
-      publish(r);
-      cb?.({ ok: true });
-    }).catch(err => respondError(cb, err));
-  });
+    publish(r);
+    cb?.({ ok: true });
+  }).catch(err => respondError(cb, err));
+});
+
 
   s.on('disconnect', () => {
     if (s.data.code) {
