@@ -90,7 +90,14 @@ function restore(){
     socket.timeout(8000).emit('join',{code:session.code,team:session.team,token:session.token},(err,r)=>{
       if(err)return $('connectionStatus').textContent='⚠️ Chưa khôi phục được, đang thử lại khi kết nối lại';
       if(!r?.ok){saveSession(null);show('joinPage');return notify(r?.error||'Không khôi phục được đội')}
-      serverSubmitted=Boolean(r.submitted);alreadySubmitted=serverSubmitted;
+serverSubmitted=Boolean(r.submitted);
+alreadySubmitted=serverSubmitted;
+
+if(alreadySubmitted){
+  $('answerText').disabled=true;
+  $('sendBtn').disabled=true;
+  $('sentNote').textContent='✅ Đội đã gửi đáp án thành công!';
+}
       setPlayerUI(session.team);$('connectionStatus').textContent='🟢 Đã kết nối lại đội '+session.team;
     });
   }
@@ -104,6 +111,48 @@ function reveal(){socket.emit('reveal',{},r=>{if(!r?.ok)notify('Không thể kh�
 function submitAnswer(){const answer=$('answerText').value.trim();if(!answer)return notify('Hãy nhập đáp án');if(!socket.connected)return notify('Đang mất kết nối, chưa gửi được');if(requestPending||alreadySubmitted)return;requestPending=true;$('sendBtn').disabled=true;$('sentNote').textContent='⏳ Đang gửi đáp án...';socket.timeout(5000).emit('submit',{answer},(err,r)=>{requestPending=false;if(err){$('sentNote').textContent='⚠️ Chưa xác nhận được. Hãy kiểm tra kết nối.';$('sendBtn').disabled=alreadySubmitted||!questionOpen||!deadline||Date.now()>=deadline;return}if(!r?.ok){$('sentNote').textContent='❌ '+(r?.error||'Không gửi được đáp án');$('sendBtn').disabled=alreadySubmitted||!questionOpen||!deadline||Date.now()>=deadline;return}alreadySubmitted=true;serverSubmitted=true;$('answerText').disabled=true;$('sendBtn').disabled=true;$('sentNote').textContent='✅ Máy chủ đã nhận đáp án thành công!'})}
 function score(team,delta){socket.emit('score',{team,delta})}
 socket.on('state',s=>{if(session?.role!=='host')return;const previousDeadline=deadline;const previousOpen=questionOpen;if(s.number!==soundQuestion){soundQuestion=s.number;lastSoundSecond=null;endSoundPlayed=false;}if(previousOpen&&!s.open&&previousDeadline&&Date.now()>=previousDeadline-1500)playEndSound();deadline=s.deadline||null;questionOpen=!!s.open;updateClock();$('count').textContent=Object.values(s.teams).filter(t=>t.connected).length+'/6 đội';$('hostStatus').textContent=s.number?(s.open?'ĐANG NHẬN ĐÁP ÁN':s.revealed?'ĐÃ KHÓA':'ĐANG CHỜ'):'Chưa mở câu hỏi';$('questionText').value=s.question||$('questionText').value;let html='';for(let i=1;i<=6;i++){const t=s.teams[i];html+=`<div class="team"><strong>🏅 Đội ${i}</strong> <span class="status">${t?.connected?'🟢 Online':'⚪ Mất kết nối / Chưa vào'}</span><div class="muted">${t?.submitted?'Đã gửi đáp án':'Đang chờ đáp án'}</div><div class="answer"></div><div class="muted">Điểm: ${t?.score||0}</div><button onclick="score(${i},20)">+20</button></div>`}$('teamGrid').innerHTML=html;Object.entries(s.teams).forEach(([i,t])=>{const el=$('teamGrid').children[Number(i)-1]?.querySelector('.answer');if(el)el.textContent=t.submitted?t.answer:'—'})});
-socket.on('question',q=>{if(session?.role!=='player')return;const isNew=q.number!==currentQuestion;if(isNew){currentQuestion=q.number;alreadySubmitted=false;serverSubmitted=false;$('answerText').value='';$('sentNote').textContent='Chỉ giáo viên nhìn thấy câu trả lời của các đội.'}deadline=q.deadline||null;questionOpen=!!q.open;$('playerQuestion').textContent=q.question||'Vui lòng chờ câu hỏi.';const active=socket.connected&&q.open&&deadline>Date.now();$('playerStatus').textContent=active?'🟢 Đang nhận câu trả lời':q.revealed?'🔒 Đã khóa câu trả lời':'Đang chờ giáo viên';$('answerText').disabled=!active||alreadySubmitted;$('sendBtn').disabled=!active||alreadySubmitted||requestPending;if(alreadySubmitted){$('sentNote').textContent='✅ Đội đã gửi đáp án thành công!';$('answerText').disabled=true;$('sendBtn').disabled=true}updateClock()});
+socket.on('question',q=>{
+  if(session?.role!=='player')return;
+
+  const isNew=q.number!==currentQuestion;
+
+  if(isNew){
+    currentQuestion=q.number;
+    alreadySubmitted=false;
+    serverSubmitted=false;
+    $('answerText').value='';
+    $('sentNote').textContent='Chỉ giáo viên nhìn thấy câu trả lời của các đội.';
+  }
+
+  if(typeof q.submitted==='boolean'){
+    alreadySubmitted=q.submitted;
+    serverSubmitted=q.submitted;
+  }
+
+  deadline=q.deadline||null;
+  questionOpen=!!q.open;
+
+  $('playerQuestion').textContent=
+    q.question||'Vui lòng chờ câu hỏi.';
+
+  const active=socket.connected&&q.open&&deadline>Date.now();
+
+  $('playerStatus').textContent=active
+    ? '🟢 Đang nhận câu trả lời'
+    : q.revealed
+      ? '🔒 Đã khóa câu trả lời'
+      : 'Đang chờ giáo viên';
+
+  $('answerText').disabled=!active||alreadySubmitted;
+  $('sendBtn').disabled=!active||alreadySubmitted||requestPending;
+
+  if(alreadySubmitted){
+    $('sentNote').textContent='✅ Đội đã gửi đáp án thành công!';
+    $('answerText').disabled=true;
+    $('sendBtn').disabled=true;
+  }
+
+  updateClock();
+});
 socket.on('ended',()=>{saveSession(null);notify('Phòng đã kết thúc.');location.reload()});
 </script></body></html>
