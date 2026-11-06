@@ -58,17 +58,6 @@
       Đội --
     </div>
 
-    <p id="roomConfirmStatus" style="color:#ffdc62">
-      Vui lòng kiểm tra thông tin phòng thi.
-    </p>
-
-    <button
-      id="confirmRoomBtn"
-      class="gold"
-      onclick="confirmRoom()"
-    >
-      ✓ XÁC NHẬN ĐÚNG PHÒNG THI
-    </button>
   </div>
 
   <div class="pill" id="playerStatus">
@@ -179,31 +168,12 @@ function updateSound(){
 function updateClock(){const left=questionOpen&&deadline?Math.max(0,deadline-Date.now()):0;const display=questionOpen?formatTime(left):'00:00';for(const id of ['hostTimer','playerTimer']){$(id).textContent=display;$(id).style.color=left<=5000?'#ff7891':'#ffd45d'}updateSound();if(questionOpen&&left===0){$('answerText').disabled=true;$('sendBtn').disabled=true;$('playerStatus').textContent='🔒 Đã hết giờ'} }
 setInterval(updateClock,200);
 
+
 function setPlayerUI(team) {
   $('myTeam').textContent = '🏅 Đội ' + team;
   $('playerRoomCode').textContent = session?.code || '------';
   $('playerTeamName').textContent = 'ĐỘI ' + team;
-
-  $('roomConfirmStatus').textContent =
-    'Vui lòng kiểm tra mã phòng và tên đội.';
-
-  $('confirmRoomBtn').disabled = false;
-  $('confirmRoomBtn').textContent =
-    '✓ XÁC NHẬN ĐÚNG PHÒNG THI';
-
   show('playerPage');
-}
-
-function confirmRoom() {
-  if (session?.role !== 'player' || !socket.connected) {
-    return notify('Chưa kết nối được với phòng thi.');
-  }
-
-  $('roomConfirmStatus').textContent =
-    '✅ Đã xác nhận đúng phòng ' +
-    session.code + ' – Đội ' + session.team;
-
-$('confirmRoomBtn').disabled = true;
 }
 
 function restore(){
