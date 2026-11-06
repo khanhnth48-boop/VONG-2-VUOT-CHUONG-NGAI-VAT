@@ -154,14 +154,25 @@ function playTick(seconds){
     playTone(note*2,0.20,0.23,0.025,'sine');
   }
 }
-function playEndSound(){
-  if(endSoundPlayed)return;
-  endSoundPlayed=true;
-  playTone(784,0.20,0,0.12,'square');
-  playTone(587,0.23,0.23,0.12,'square');
-  playTone(392,0.55,0.49,0.13,'sawtooth');
-  playTone(196,0.70,0.49,0.07,'sine');
+
+function playEndSound() {
+  if (endSoundPlayed || !soundEnabled || session?.role !== 'host') return;
+
+  unlockAudio();
+
+  if (!audioCtx || audioCtx.state !== 'running') {
+    console.warn('AudioContext chưa sẵn sàng để phát chuông');
+    return;
+  }
+
+  endSoundPlayed = true;
+
+  // Chuông điện tử báo hết giờ
+  playTone(1046, 0.25, 0, 0.18, 'sine');
+  playTone(1318, 0.25, 0.28, 0.18, 'sine');
+  playTone(1568, 0.75, 0.56, 0.20, 'sine');
 }
+
 
 function updateSound() {
   if (session?.role !== 'host') return;
