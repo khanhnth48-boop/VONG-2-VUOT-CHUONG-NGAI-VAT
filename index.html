@@ -3,10 +3,111 @@
 <style>
 :root{font-family:system-ui,Arial;color:#f4fbff;background:#06162d}*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at top,#105b85 0%,#06162d 68%)}main{max-width:1120px;margin:auto;padding:24px}h1{text-align:center;color:#ffd85a;font-size:clamp(24px,4vw,42px);margin-bottom:4px}h2{color:#7eeaff}header p{text-align:center;color:#b4e9fa}section,.card{background:#0b2946dd;border:1px solid #2c85a8;border-radius:18px;padding:20px;margin:14px 0;box-shadow:0 12px 30px #0004}button,input,select,textarea{font:inherit;border-radius:10px;padding:12px;border:1px solid #55b3d1}input,select,textarea{background:#061b31;color:white;max-width:100%}textarea{width:100%;min-height:85px}button{background:#13badb;color:#031c32;font-weight:750;cursor:pointer;margin:4px}button:hover{filter:brightness(1.14)}button.gold{background:#ffcb43}button:disabled{opacity:.5;cursor:not-allowed}.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}.row>*{flex:1}label{display:block;margin:10px 0 4px;color:#b6eafa}.hidden{display:none!important}.code{font-size:40px;color:#ffdc62;font-weight:900;letter-spacing:8px}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.team{background:#123b59;border-radius:14px;padding:15px;border:1px solid #358bb2}.answer{min-height:58px;font-size:21px;color:#ffdc62;overflow-wrap:anywhere}.muted{color:#9fc3d4}.status{font-size:13px}.pill{display:inline-block;padding:5px 9px;border-radius:20px;background:#145d79}.big{font-size:24px}.timer{font-size:42px;color:#ffd45d;font-weight:900}#playerQuestion{font-size:24px;line-height:1.5}footer{text-align:center;color:#8db8c8;padding:20px}@media(max-width:650px){.grid{grid-template-columns:1fr}.row{display:block}.row>*{width:100%;margin:5px 0}.code{font-size:30px}}
 </style></head><body><main><header><h1>🏆 VƯỢT CHƯỚNG NGẠI VẬT</h1><p>OLYMPIA • HÓA HỌC & DINH DƯỠNG</p></header>
-<section id="home"><h2>Chọn vai trò</h2><button onclick="createRoom()">👨‍🏫 Tôi là giáo viên – Tạo phòng</button><button class="gold" onclick="show('joinPage')">👩‍🎓 Tôi là học sinh – Vào phòng</button></section>
-<section id="joinPage" class="hidden"><h2>Tham gia cuộc thi</h2><label>Mã phòng</label><input id="joinCode" placeholder="VD: ABC123" maxlength="6"><label>Chọn đội</label><select id="teamSelect"><option value="1">Đội 1</option><option value="2">Đội 2</option><option value="3">Đội 3</option><option value="4">Đội 4</option><option value="5">Đội 5</option><option value="6">Đội 6</option></select><p><button onclick="joinRoom()">Tham gia</button></p></section>
+
+<section id="home">
+  <h2>Chọn vai trò</h2>
+
+  <div class="card">
+    <h3>👨‍🏫 GIÁO VIÊN – TẠO PHÒNG THI</h3>
+
+    <label for="customRoomCode">Mã phòng tùy chọn</label>
+    <input
+      id="customRoomCode"
+      type="text"
+      placeholder="VD: OLYMPIA2026"
+      maxlength="20"
+      autocomplete="off"
+      style="width:100%;text-transform:uppercase"
+    >
+
+    <p class="muted">
+      Để trống nếu muốn hệ thống tự tạo mã phòng ngẫu nhiên.
+    </p>
+
+    <button onclick="createRoom()">
+      🏆 TẠO PHÒNG THI
+    </button>
+  </div>
+
+  <div class="card">
+    <h3>👩‍🎓 HỌC SINH – THAM GIA</h3>
+
+    <button class="gold" onclick="show('joinPage')">
+      🚀 VÀO PHÒNG THI
+    </button>
+  </div>
+</section>
+
+<section id="joinPage" class="hidden"><h2>Tham gia cuộc thi</h2><label>Mã phòng</label>
+<input id="joinCode" placeholder="VD: OLYMPIA2026" maxlength="20" autocomplete="off" style="text-transform:uppercase">
+<label>Chọn đội</label><select id="teamSelect"><option value="1">Đội 1</option><option value="2">Đội 2</option><option value="3">Đội 3</option><option value="4">Đội 4</option><option value="5">Đội 5</option><option value="6">Đội 6</option></select><p><button onclick="joinRoom()">Tham gia</button></p></section>
 <section id="hostPage" class="hidden"><h2>🎛️ Bảng điều khiển giáo viên</h2><div class="row"><div><span class="muted">Mã phòng để học sinh tham gia:</span><div class="code" id="roomCode"></div></div><div><span class="muted">Thiết bị kết nối:</span><div class="big" id="count">0/6 đội</div></div></div><div class="card"><label>Câu hỏi hiển thị cho học sinh</label><textarea id="questionText" placeholder="Nhập câu hỏi..."></textarea><label>Thời gian trả lời (giây)</label><input id="seconds" type="number" value="20" min="5" max="300"><div class="card" style="text-align:center"><div class="muted">⏱️ THỜI GIAN CÒN LẠI</div><div class="timer" id="hostTimer">00:20</div><button id="soundToggle" type="button" onclick="toggleSound()">🔊 ÂM THANH: BẬT</button><div class="muted" style="font-size:13px">Nhạc đếm ngược chỉ phát trên máy giáo viên</div></div><p><button onclick="openQuestion()">📢 MỞ CÂU HỎI</button><button class="gold" onclick="reveal()">🔓 KHÓA NHẬN ĐÁP ÁN / CÔNG BỐ</button></p><div class="muted" id="hostStatus">Chưa mở câu hỏi</div></div><h2>📡 Đáp án trực tiếp của 6 đội</h2><div class="grid" id="teamGrid"></div></section>
-<section id="playerPage" class="hidden"><h2 id="myTeam">Đội</h2><div class="pill" id="playerStatus">Đang chờ giáo viên mở câu hỏi...</div><div class="card"><div id="playerQuestion">Vui lòng chờ câu hỏi.</div><div class="timer" id="playerTimer" style="text-align:center">00:20</div><p><textarea id="answerText" placeholder="Nhập đáp án của đội..." disabled></textarea></p><button id="sendBtn" onclick="submitAnswer()" disabled>📨 GỬI ĐÁP ÁN</button><p class="muted" id="sentNote">Chỉ giáo viên nhìn thấy câu trả lời của các đội.</p></div></section>
+
+<section id="playerPage" class="hidden">
+  <h2 id="myTeam">Đội</h2>
+
+  <div class="card" style="text-align:center">
+    <h3 style="color:#7eeaff">
+      🏆 THÔNG TIN PHÒNG THI
+    </h3>
+
+    <div class="muted">Mã phòng của bạn</div>
+    <div class="code" id="playerRoomCode">------</div>
+
+    <div class="big" id="playerTeamName">
+      Đội --
+    </div>
+
+    <p id="roomConfirmStatus" style="color:#ffdc62">
+      Vui lòng kiểm tra thông tin phòng thi.
+    </p>
+
+    <button
+      id="confirmRoomBtn"
+      class="gold"
+      onclick="confirmRoom()"
+    >
+      ✓ XÁC NHẬN ĐÚNG PHÒNG THI
+    </button>
+  </div>
+
+  <div class="pill" id="playerStatus">
+    Đang chờ giáo viên mở câu hỏi...
+  </div>
+
+  <div class="card">
+    <div id="playerQuestion">
+      Vui lòng chờ câu hỏi.
+    </div>
+
+    <div class="timer"
+         id="playerTimer"
+         style="text-align:center">
+      00:20
+    </div>
+
+    <p>
+      <textarea
+        id="answerText"
+        placeholder="Nhập đáp án của đội..."
+        disabled
+      ></textarea>
+    </p>
+
+    <button
+      id="sendBtn"
+      onclick="submitAnswer()"
+      disabled
+    >
+      📨 GỬI ĐÁP ÁN
+    </button>
+
+    <p class="muted" id="sentNote">
+      Chỉ giáo viên nhìn thấy câu trả lời của các đội.
+    </p>
+  </div>
+</section>
+
 <footer><span id="connectionStatus">Đang kết nối...</span> • Phiên chơi trực tiếp • Mỗi đội sử dụng một thiết bị</footer></main>
 <script src="/socket.io/socket.io.js"></script><script>
 const socket=io({reconnection:true,reconnectionAttempts:Infinity,reconnectionDelay:1000,reconnectionDelayMax:5000,timeout:20000});
@@ -77,7 +178,34 @@ function updateSound(){
 }
 function updateClock(){const left=questionOpen&&deadline?Math.max(0,deadline-Date.now()):0;const display=questionOpen?formatTime(left):'00:00';for(const id of ['hostTimer','playerTimer']){$(id).textContent=display;$(id).style.color=left<=5000?'#ff7891':'#ffd45d'}updateSound();if(questionOpen&&left===0){$('answerText').disabled=true;$('sendBtn').disabled=true;$('playerStatus').textContent='🔒 Đã hết giờ'} }
 setInterval(updateClock,200);
-function setPlayerUI(team){$('myTeam').textContent='🏅 Đội '+team;show('playerPage')}
+
+function setPlayerUI(team) {
+  $('myTeam').textContent = '🏅 Đội ' + team;
+  $('playerRoomCode').textContent = session?.code || '------';
+  $('playerTeamName').textContent = 'ĐỘI ' + team;
+
+  $('roomConfirmStatus').textContent =
+    'Vui lòng kiểm tra mã phòng và tên đội.';
+
+  $('confirmRoomBtn').disabled = false;
+  $('confirmRoomBtn').textContent =
+    '✓ XÁC NHẬN ĐÚNG PHÒNG THI';
+
+  show('playerPage');
+}
+
+function confirmRoom() {
+  if (session?.role !== 'player' || !socket.connected) {
+    return notify('Chưa kết nối được với phòng thi.');
+  }
+
+  $('roomConfirmStatus').textContent =
+    '✅ Đã xác nhận đúng phòng ' +
+    session.code + ' – Đội ' + session.team;
+
+$('confirmRoomBtn').disabled = true;
+}
+
 function restore(){
   if(!session)return;
   if(session.role==='host'){
@@ -104,7 +232,38 @@ if(alreadySubmitted){
 }
 socket.on('connect',()=>{$('connectionStatus').textContent='🟢 Đã kết nối';restore()});
 socket.on('disconnect',()=>{$('connectionStatus').textContent='⚠️ Mất kết nối – đang tự kết nối lại';$('answerText').disabled=true;$('sendBtn').disabled=true;if(session?.role==='player')$('playerStatus').textContent='⚠️ Mất kết nối – đang khôi phục'});
-function createRoom(){if(!socket.connected)return notify('Chưa kết nối máy chủ');socket.emit('create',{},r=>{if(!r?.ok)return notify('Không tạo được phòng');saveSession({role:'host',code:r.code,token:r.token});$('roomCode').textContent=r.code;show('hostPage')})}
+
+function createRoom() {
+  if (!socket.connected) {
+    return notify('Chưa kết nối máy chủ.');
+  }
+
+  const code = $('customRoomCode').value
+    .trim()
+    .toUpperCase();
+
+  if (code && !/^[A-Z0-9]{4,20}$/.test(code)) {
+    return notify(
+      'Mã phòng phải gồm 4–20 ký tự, chỉ dùng chữ cái A–Z và số 0–9.'
+    );
+  }
+
+  socket.emit('create', { code }, r => {
+    if (!r?.ok) {
+      return notify(r?.error || 'Không tạo được phòng.');
+    }
+
+    saveSession({
+      role: 'host',
+      code: r.code,
+      token: r.token
+    });
+
+    $('roomCode').textContent = r.code;
+    show('hostPage');
+  });
+}
+
 function joinRoom(){if(!socket.connected)return notify('Chưa kết nối máy chủ');socket.emit('join',{code:$('joinCode').value,team:$('teamSelect').value},r=>{if(!r?.ok)return notify(r?.error||'Không vào được phòng');saveSession({role:'player',code:r.code,team:r.team,token:r.token});serverSubmitted=Boolean(r.submitted);alreadySubmitted=serverSubmitted;setPlayerUI(r.team)})}
 function openQuestion(){unlockAudio();const q=$('questionText').value.trim();if(!q)return notify('Vui lòng nhập câu hỏi');socket.emit('openQuestion',{question:q,seconds:$('seconds').value},r=>{if(!r?.ok)notify(r?.error||'Không thể mở câu hỏi')})}
 function reveal(){socket.emit('reveal',{},r=>{if(!r?.ok)notify('Không thể khóa đáp án')})}
