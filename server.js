@@ -99,6 +99,18 @@ async function save(r) {
   );
 }
 
+
+async function insertNewRoom(r) {
+  const result = await pool.query(
+    `INSERT INTO olympia_rooms (code, data, updated_at)
+     VALUES ($1, $2::jsonb, NOW())
+     ON CONFLICT (code) DO NOTHING
+     RETURNING code`,
+    [r.code, JSON.stringify(serialize(r))]
+  );
+
+  return result.rowCount === 1;
+}
 async function removeRoom(r) {
   await pool.query(
     'DELETE FROM olympia_rooms WHERE code = $1',
@@ -260,12 +272,30 @@ function expireLater(r) {
 
 io.on('connection', s => {
 
-  s.on('create', (_unused, cb) => {
-    let code = roomCode();
+s.on('create', ({ code: requestedCode } = {}, cb) => {
+  const customCode = String(requestedCode ?? '')
+    .trim()
+    .toUpperCase();
 
-    while (rooms.has(code)) {
-      code = roomCode();
-    }
+  if (customCode && !/^[A-Z0-9]{4,20}$/.test(customCode)) {
+    return cb?.({
+      ok: false,
+      error: 'Mã phòng phải gồm 4–20 ký tự, chỉ chứa chữ và số.'
+    });
+  }
+
+  let code = customCode || roomCode();
+
+  if (customCode && rooms.has(code)) {
+    return cb?.({
+      ok: false,
+      error: 'Mã phòng này đã tồn tại. Vui lòng chọn mã khác.'
+    });
+  }
+
+  while (!customCode && rooms.has(code)) {
+    code = roomCode();
+  }
 
     const hostToken = token();
 
@@ -286,7 +316,30 @@ io.on('connection', s => {
     };
 
     enqueue(r, async () => {
-      await save(r);
+      
+
+let created = await insertNewRoom(r);
+
+if (!created && !customCode) {
+  for (let attempt = 0; attempt < 9 && !created; attempt++) {
+    code = roomCode();
+
+    while (rooms.has(code)) {
+      code = roomCode();
+    }
+
+    r.code = code;
+    created = await insertNewRoom(r);
+  }
+}
+
+if (!created) {
+  return cb?.({
+    ok: false,
+    error: 'Mã phòng đã tồn tại. Vui lòng chọn mã khác.'
+  });
+}
+
 
       rooms.set(code, r);
       r.hostSid = s.id;
