@@ -110,6 +110,12 @@ let deadline=null,currentQuestion=0,questionOpen=false,alreadySubmitted=false,se
 const saveSession=value=>{session=value;if(value)sessionStorage.setItem(storageKey,JSON.stringify(value));else sessionStorage.removeItem(storageKey)};
 function formatTime(ms){const n=Math.max(0,Math.ceil(ms/1000));return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0')}
 // Nhạc điện tử nguyên bản theo phong cách gameshow, không sử dụng file có bản quyền.
+  
+const countdownAudio = new Audio('/20s.wav');
+countdownAudio.preload = 'auto';
+countdownAudio.loop = false;
+countdownAudio.volume = 0.8;
+
 let soundEnabled=true,audioCtx=null,lastSoundSecond=null,soundQuestion=0,soundDeadline=null,endSoundPlayed=false;
 function unlockAudio(){
   if(!soundEnabled||session?.role!=='host')return;
@@ -156,15 +162,34 @@ function playEndSound(){
   playTone(392,0.55,0.49,0.13,'sawtooth');
   playTone(196,0.70,0.49,0.07,'sine');
 }
-function updateSound(){
-  if(session?.role!=='host'||!soundEnabled||!audioCtx||audioCtx.state!=='running')return;
-  if(!questionOpen||!deadline)return;
-  const seconds=Math.max(0,Math.ceil((deadline-Date.now())/1000));
-  if(seconds===0){playEndSound();return}
-  if(lastSoundSecond===seconds)return;
-  lastSoundSecond=seconds;
-  playTick(seconds);
+
+function updateSound() {
+  if (session?.role !== 'host') return;
+
+  if (!soundEnabled || !questionOpen || !deadline) {
+    countdownAudio.pause();
+    return;
+  }
+
+  const remaining = Math.max(0, (deadline - Date.now()) / 1000);
+
+  if (remaining <= 0 || remaining > 20) {
+    countdownAudio.pause();
+    return;
+  }
+
+  const desiredTime = Math.max(0, 20 - remaining);
+
+  if (countdownAudio.paused) {
+    countdownAudio.currentTime = desiredTime;
+    countdownAudio.play().catch(error => {
+      console.warn('Không phát được âm thanh:', error);
+    });
+  } else if (Math.abs(countdownAudio.currentTime - desiredTime) > 0.8) {
+    countdownAudio.currentTime = desiredTime;
+  }
 }
+
 function updateClock(){const left=questionOpen&&deadline?Math.max(0,deadline-Date.now()):0;const display=questionOpen?formatTime(left):'00:00';for(const id of ['hostTimer','playerTimer']){$(id).textContent=display;$(id).style.color=left<=5000?'#ff7891':'#ffd45d'}updateSound();if(questionOpen&&left===0){$('answerText').disabled=true;$('sendBtn').disabled=true;$('playerStatus').textContent='🔒 Đã hết giờ'} }
 setInterval(updateClock,200);
 
