@@ -25,7 +25,12 @@ const app = express();
 const http = createServer(app);
 const io = new Server(http);
 
-app.use(express.static('public'));
+
+app.get('/20s.wav', (_req, res) =>
+  res.sendFile('20s.wav', { root: process.cwd() })
+);
+
+
 app.get('/', (_req, res) =>
   res.sendFile('index.html', { root: process.cwd() })
 );
